@@ -13,9 +13,12 @@ class MyStepper:
         self.target = 0
 
         self.speed = speed
-        self.topLimit = 0
-        self.bottomLimit = 0
+        self.limit = 0
+        self.invertDir = False
         # 5 18 19 21
+
+    def invertDirection(self, invert):
+        self.invertDir = invert
 
     def setPosition(self, newPosition):
         self.position = newPosition
@@ -23,17 +26,15 @@ class MyStepper:
     def getPosition(self):
         return self.position
 
-    def setTopLimit(self, newLimit):
-        self.topLimit = newLimit
+    def setLimit(self):
+        self.limit = self.position
 
-    def getTopLimit(self):
-        return self.topLimit
+    def getLimit(self):
+        return self.limit
 
-    def setBottomLimit(self, newLimit):
-        self.bottomLimit = newLimit
-
-    def getBottomLimit(self):
-        return self.bottomLimit
+    def setTopPosition(self):
+        self.position = 0
+        self.target = 0
 
     def setTargetPosition(self, targetPosition):
         self.target = targetPosition
@@ -42,12 +43,18 @@ class MyStepper:
         return self.target
 
     def move(self):
-        if self.position == self.target or self.position <= self.topLimit or self.position >= self.bottomLimit:
+        if self.position == self.target or self.position <= self.limit or self.position >= self.limit:
             self.disable()
         if self.position < self.target:
-            self.rotateCW(1)
+            if self.invertDir:
+                self.rotateCCW(1)
+            else:
+                self.rotateCW(1)
         elif self.position > self.target:
-            self.rotateCCW(1)
+            if self.invertDir:
+                self.rotateCW(1)
+            else:
+                self.rotateCCW(1)
 
     def disable(self):
         self.pin0.value(0)
@@ -59,15 +66,15 @@ class MyStepper:
         totalSteps = 0
         while totalSteps < steps:
             self.rotateCWStep()
-            totalSteps += 8
-        self.position += 1
+            totalSteps += 1
+        self.position += steps * -1 if self.invertDir else steps
 
     def rotateCCW(self, steps):
         totalSteps = 0
         while totalSteps < steps:
             self.rotateCCWStep()
-            totalSteps += 8
-        self.position -= 1
+            totalSteps += 1
+        self.position -= steps * -1 if self.invertDir else steps
 
     def rotateCWAngle(self, angle):
         for i in range(angle * 64 / 45):

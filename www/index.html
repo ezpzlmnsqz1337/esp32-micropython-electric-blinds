@@ -21,7 +21,22 @@
   <body>
     <div class="container-fluid">
       <h1>Blinds control</h1>
+
       <div class="row justify-content-md-center">
+        <div class="col-sm-5"></div>
+        <div class="col-sm-2 mt-5">
+          <div class="form-group">
+            <label for="exampleInputEmail1">Password for calibration</label>
+            <input
+              type="password"
+              class="form-control"
+              placeholder="Enter password"
+              id="pass"
+            />
+          </div>
+        </div>
+        <div class="col-sm-5"></div>
+
         <div class="col-sm-6 text-center">
           <h2>Balcony</h2>
           <div class="btn-group-vertical" role="group">
@@ -50,6 +65,24 @@
             >
               Close
             </button>
+          </div>
+          <div class="w-100 mt-5">
+            <div class="btn-group-vertical" role="group">
+              <button
+                type="button"
+                class="btn btn-danger"
+                onclick="setTopPosition(0)"
+              >
+                Set top position
+              </button>
+              <button
+                type="button"
+                class="btn btn-danger"
+                onclick="setLimit(0)"
+              >
+                Set bottom position
+              </button>
+            </div>
           </div>
         </div>
 
@@ -81,6 +114,24 @@
             >
               Close
             </button>
+          </div>
+          <div class="w-100 mt-5">
+            <div class="btn-group-vertical" role="group">
+              <button
+                type="button"
+                class="btn btn-danger"
+                onclick="setTopPosition(1)"
+              >
+                Set top position
+              </button>
+              <button
+                type="button"
+                class="btn btn-danger"
+                onclick="setLimit(1)"
+              >
+                Set bottom position
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -127,6 +178,18 @@
         ws.send("close:" + motorId);
       };
 
+      setTopPosition = (motorId) => {
+        const pass = document.getElementById("pass").value;
+        ws.send(
+          "setTopPosition:" + motorId + ":" + CryptoJS.SHA256(pass).toString()
+        );
+      };
+
+      setLimit = (motorId) => {
+        const pass = document.getElementById("pass").value;
+        ws.send("setLimit:" + motorId + ":" + CryptoJS.SHA256(pass).toString());
+      };
+
       window.addEventListener("DOMContentLoaded", (event) => {
         console.log("DOM fully loaded and parsed");
       });
@@ -148,5 +211,6 @@
       integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
       crossorigin="anonymous"
     ></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js"></script>
   </body>
 </html>
