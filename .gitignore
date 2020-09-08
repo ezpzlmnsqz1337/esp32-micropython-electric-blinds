@@ -1,0 +1,9 @@
+.vscode
+MicroWebSrv
+webrepl
+**/node_modules
+dev-requirements.txt
+micropy.json
+pymakr.conf
+requirements.txt
+uploadAll.sh

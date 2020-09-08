@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <title>Blinds control</title>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <!-- Bootstrap CSS -->
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+      integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body>
+    <div class="container-fluid">
+      <h1>Blinds control</h1>
+      <div class="row justify-content-md-center">
+        <div class="col-sm-6 text-center">
+          <h2>Balcony</h2>
+          <div class="btn-group-vertical" role="group">
+            <button type="button" class="btn btn-primary" onclick="up(0)">
+              Up
+            </button>
+            <button type="button" class="btn btn-primary" onclick="stop(0)">
+              stop
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="down(0)">
+              down
+            </button>
+          </div>
+          <div class="btn-group-vertical" role="group">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              onclick="openBlind(0)"
+            >
+              Open
+            </button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              onclick="closeBlind(0)"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+
+        <div class="col-sm-6 text-center">
+          <h2>Window</h2>
+          <div class="btn-group-vertical" role="group">
+            <button type="button" class="btn btn-primary" onclick="up(1)">
+              Up
+            </button>
+            <button type="button" class="btn btn-primary" onclick="stop(1)">
+              stop
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="down(1)">
+              down
+            </button>
+          </div>
+          <div class="btn-group-vertical" role="group">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              onclick="openBlind(1)"
+            >
+              Open
+            </button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              onclick="closeBlind(1)"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+      <br />
+    </div>
+    <script>
+      // motors
+      const minMotorStep = 100;
+      let motor1Pos = 0;
+      let motor2Pos = 0;
+
+      // const ws = new WebSocket("ws://" + window.location.hostname + ":8085");
+      const ws = new WebSocket("ws://" + window.location.hostname);
+
+      ws.onopen = (event) => {
+        ws.send("getBlindsPosition");
+      };
+
+      ws.onmessage = (event) => {
+        console.log("Response from server: ", event.data);
+        if (event.data.includes("blindsPosition")) {
+          const motor1Pos = parseInt(event.data.split(":")[1]);
+          const motor2Pos = parseInt(event.data.split(":")[2]);
+        }
+      };
+
+      up = (motorId) => {
+        ws.send("up:" + motorId + ":" + minMotorStep);
+      };
+
+      down = (motorId) => {
+        ws.send("down:" + motorId + ":" + minMotorStep);
+      };
+
+      stop = (motorId) => {
+        ws.send("stop:" + motorId);
+      };
+
+      openBlind = (motorId) => {
+        ws.send("open:" + motorId);
+      };
+
+      closeBlind = (motorId) => {
+        ws.send("close:" + motorId);
+      };
+
+      window.addEventListener("DOMContentLoaded", (event) => {
+        console.log("DOM fully loaded and parsed");
+      });
+    </script>
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script
+      src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+      integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+      integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+      integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+      crossorigin="anonymous"
+    ></script>
+  </body>
+</html>
