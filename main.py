@@ -6,13 +6,12 @@ USER_PASSWORD = ''
 with open('welcome.txt', 'r') as f:
     USER_PASSWORD = f.readline()
 
-motors = [
-    stepper.MyStepper(5, 18, 19, 21, 0.001),
-    stepper.MyStepper(13, 12, 14, 27, 0.001)
-]
+motors = (
+    stepper.MyStepper(5, 18, 19, 21),
+    stepper.MyStepper(13, 12, 14, 27)
+)
 
-timMotor0 = machine.Timer(1)
-timMotor1 = machine.Timer(2)
+timMotor = machine.Timer(1)
 
 # motors[0].loop()
 
@@ -25,8 +24,8 @@ def moveMotors():
 motors[1].invertDirection(True)
 
 
-timMotor0.init(period=1, mode=machine.Timer.PERIODIC,
-               callback=lambda t: moveMotors())
+timMotor.init(period=1, mode=machine.Timer.PERIODIC,
+              callback=lambda t: moveMotors())
 
 
 def _acceptWebSocketCallback(webSocket, httpClient):
