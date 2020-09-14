@@ -3,17 +3,19 @@ import time
 
 
 class MyStepper:
-    def __init__(self, pin0, pin1, pin2, pin3):
+    def __init__(self, pin0, pin1, pin2, pin3, id):
         self.pin0 = machine.Pin(pin0, machine.Pin.OUT)
         self.pin1 = machine.Pin(pin1, machine.Pin.OUT)
         self.pin2 = machine.Pin(pin2, machine.Pin.OUT)
         self.pin3 = machine.Pin(pin3, machine.Pin.OUT)
+        self.id = id
 
         self.position = 0
         self.target = 0
 
         self.limit = 0
         self.invertDir = False
+        self.disabled = True
 
         self.stepMap = (self.step1,
                         self.step2,
@@ -47,6 +49,7 @@ class MyStepper:
 
     def setTargetPosition(self, targetPosition):
         self.target = targetPosition
+        self.disabled = False
 
     def getTargetPosition(self):
         return self.target
@@ -70,18 +73,32 @@ class MyStepper:
         self.pin1.value(0)
         self.pin2.value(0)
         self.pin3.value(0)
+        # self.saveState()
+
+    def saveState(self):
+        with open('motor'+str(self.id)+'.cfg', 'w') as f:
+            f.write('position:'+self.position+'\n')
+            f.write('limit:'+self.limit+'\n')
+            f.write('target:'+self.target+'\n')
+
+    def loadState(self):
+        with open('motor'+str(self.id)+'.cfg', 'r') as f:
+            self.position = f.readline.split(':')[1]
+            self.limit = f.readline.split(':')[1]
+            self.target = f.readline.split(':')[1]
+            self.disabled = False
 
     def stepCW(self):
         self.currentStep = self.currentStep + \
-            1 if self.currentStep < len(self.stepMap) else 0
+            1 if self.currentStep < (len(self.stepMap)-1) else 0
         self.stepMap[self.currentStep]()
-        self.position += 1 if self.invertDir else -1
+        self.position += -1 if self.invertDir else 1
 
     def stepCCW(self):
         self.currentStep = self.currentStep - \
-            1 if self.currentStep > 0 else len(self.stepMap)
+            1 if self.currentStep > 0 else (len(self.stepMap)-1)
         self.stepMap[self.currentStep]()
-        self.position += -1 if self.invertDir else 1
+        self.position += 1 if self.invertDir else -1
 
     def step1(self):
         self.pin0.value(1)

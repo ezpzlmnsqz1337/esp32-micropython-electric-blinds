@@ -3,17 +3,16 @@ import machine
 import stepper
 
 USER_PASSWORD = ''
-with open('welcome.txt', 'r') as f:
+with open('pass', 'r') as f:
     USER_PASSWORD = f.readline()
 
 motors = (
-    stepper.MyStepper(5, 18, 19, 21),
-    stepper.MyStepper(13, 12, 14, 27)
+    stepper.MyStepper(5, 18, 19, 21, 0),
+    stepper.MyStepper(13, 12, 14, 27, 1)
 )
 
 timMotor = machine.Timer(1)
-
-# motors[0].loop()
+timState = machine.Timer(2)
 
 
 def moveMotors():
@@ -28,67 +27,103 @@ timMotor.init(period=1, mode=machine.Timer.PERIODIC,
               callback=lambda t: moveMotors())
 
 
+def sendMotorsPosition(webSocket):
+    for i, m in enumerate(motors):
+        webSocket.SendText('blindsPosition:motor:%i:position:%i:target:%i:limit:%i' %
+                           (i, m.getPosition(), m.getTargetPosition(), m.getLimit()))
+
+
+def goUp(webSocket, msg):
+    index = int(msg.split(':')[1])
+    steps = int(msg.split(':')[2])
+    motor = motors[index]
+    motor.setTargetPosition(motor.getTargetPosition() + steps)
+    webSocket.SendText('motor:%i:goto:%s ' %
+                       (index, motor.getTargetPosition() + steps))
+
+
+def goDown(webSocket, msg):
+    index = int(msg.split(':')[1])
+    steps = int(msg.split(':')[2])
+    motor = motors[index]
+    motor.setTargetPosition(motor.getTargetPosition() - steps)
+    webSocket.SendText('motor:%i:go to: %i' %
+                       (index, motor.getTargetPosition() - steps))
+
+
+def stop(webSocket, msg):
+    index = int(msg.split(':')[1])
+    motor = motors[index]
+    motor.setTargetPosition(motor.getPosition())
+    motor.disable()
+    webSocket.SendText('motor:%i, stop' % index)
+
+
+def close(webSocket, msg):
+    index = int(msg.split(':')[1])
+    motor = motors[index]
+    motor.setTargetPosition(motor.getLimit())
+    webSocket.SendText('motor: %i, close, limit: %i ' %
+                       (index, motor.getLimit()))
+
+
+def open(webSocket, msg):
+    index = int(msg.split(':')[1])
+    motor = motors[index]
+    motor.setTargetPosition(0)
+    webSocket.SendText('motor: %i, open, bottom limit: %i ' %
+                       (index, 0))
+
+
+def setTopPosition(webSocket, msg):
+    password = msg.split(':')[2]
+    if password == USER_PASSWORD:
+        index = int(msg.split(':')[1])
+        motor = motors[index]
+        motor.setTopPosition()
+        webSocket.SendText('setTopPosition:motor:%i:position:%i' %
+                           (index, motor.getPosition()))
+
+
+def setLimit(webSocket, msg):
+    password = msg.split(':')[2]
+    if password == USER_PASSWORD:
+        index = int(msg.split(':')[1])
+        motor = motors[index]
+        motor.setLimit()
+        webSocket.SendText('setLimit:motor:%i:position:%i' %
+                           (index, motor.getPosition()))
+
+# web server part from here
+
+
 def _acceptWebSocketCallback(webSocket, httpClient):
     print('WS ACCEPT')
     webSocket.RecvTextCallback = _recvTextCallback
     webSocket.RecvBinaryCallback = _recvBinaryCallback
     webSocket.ClosedCallback = _closedCallback
 
+    timState.init(period=1000, mode=machine.Timer.PERIODIC,
+                  callback=lambda t: sendMotorsPosition(webSocket))
+
 
 def _recvTextCallback(webSocket, msg):
     if 'up' in msg:
-        index = int(msg.split(':')[1])
-        steps = int(msg.split(':')[2])
-        motor = motors[index]
-        motor.setTargetPosition(motor.getPosition() + steps)
-        webSocket.SendText('motor:%i:goto:%s ' %
-                           (index, motor.getPosition() + steps))
+        goUp(webSocket, msg)
     elif 'down' in msg:
-        index = int(msg.split(':')[1])
-        steps = int(msg.split(':')[2])
-        motor = motors[index]
-        motor.setTargetPosition(motor.getPosition() - steps)
-        webSocket.SendText('motor:%i:go to: %i' %
-                           (index, motor.getPosition() - steps))
+        goDown(webSocket, msg)
     elif 'stop' in msg:
-        index = int(msg.split(':')[1])
-        motor = motors[index]
-        motor.setTargetPosition(motor.getPosition())
-        motor.disable()
-        webSocket.SendText('motor:%i, stop' % index)
+        stop(webSocket, msg)
     elif 'close' in msg:
-        index = int(msg.split(':')[1])
-        motor = motors[index]
-        motor.setTargetPosition(motor.getLimit())
-        webSocket.SendText('motor: %i, close, limit: %i ' %
-                           (index, motor.getLimit()))
+        close(webSocket, msg)
     elif 'open' in msg:
-        index = int(msg.split(':')[1])
-        motor = motors[index]
-        motor.setTargetPosition(0)
-        webSocket.SendText('motor: %i, open, bottom limit: %i ' %
-                           (index, 0))
+        open(webSocket, msg)
     elif 'setTopPosition' in msg:
-        password = msg.split(':')[2]
-        if password == USER_PASSWORD:
-            index = int(msg.split(':')[1])
-            motor = motors[index]
-            motor.setTopPosition()
-            webSocket.SendText('setTopPosition:motor:%i:position:%i' %
-                               (index, motor.getPosition()))
+        setTopPosition(webSocket, msg)
     elif 'setLimit' in msg:
-        password = msg.split(':')[2]
-        if password == USER_PASSWORD:
-            index = int(msg.split(':')[1])
-            motor = motors[index]
-            motor.setLimit()
-            webSocket.SendText('setLimit:motor:%i:position:%i' %
-                               (index, motor.getPosition()))
+        setLimit(webSocket, msg)
     elif 'getBlindsPosition' in msg:
-        webSocket.SendText('blindsPosition:motor:%i:position:%i' %
-                           (0, motors[0].getPosition()))
-        webSocket.SendText('blindsPosition:motor:%i:position:%i' %
-                           (1, motors[1].getPosition()))
+        sendMotorsPosition(webSocket)
 
 
 def _recvBinaryCallback(webSocket, data):
@@ -97,12 +132,17 @@ def _recvBinaryCallback(webSocket, data):
 
 def _closedCallback(webSocket):
     print('WS CLOSED')
+    timState.deinit()
 
 # ----------------------------------------------------------------------------
 
 # routeHandlers = [
-#	( '/test',	'GET',	_httpHandlerTestGet ),
-#	( '/test',	'POST',	_httpHandlerTestPost )
+#    ( '/open-balcony',	'GET', motors[0].setTargetPosition(0)),
+#	( '/open-window',	'GET',	motors[0].setTargetPosition(0) ),
+#	( '/open',	'GET',	motors[0].setTargetPosition(0) ),
+#	( '/close-balcony',	'GET',	motors[0].setTargetPosition(0) ),
+#	( '/close-window',	'GET',	motors[0].setTargetPosition(0) ),
+#	( '/close',	'GET',	motors[0].setTargetPosition(0) )
 # ]
 
 
@@ -110,7 +150,6 @@ srv = MicroWebSrv(webPath='www/')
 srv.MaxWebSocketRecvLen = 256
 srv.WebSocketThreaded = True
 srv.AcceptWebSocketCallback = _acceptWebSocketCallback
-print('server start')
 srv.Start(threaded=True)
 print('server started')
 
