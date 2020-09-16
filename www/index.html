@@ -39,7 +39,7 @@
       .blind {
         position: absolute;
         z-index: 10;
-        height: 90%;
+        height: 100%;
         width: 100%;
         background-color: #7d7b90;
         border-bottom: none;
@@ -129,6 +129,13 @@
               >
                 Set bottom position
               </button>
+              <button
+                type="button"
+                class="btn btn-danger"
+                onclick="setIgnoreLimits()"
+              >
+                Ignore limits
+              </button>
             </div>
           </div>
           <div class="w-100 mt-5">
@@ -191,6 +198,13 @@
               >
                 Set bottom position
               </button>
+              <button
+                type="button"
+                class="btn btn-danger"
+                onclick="setIgnoreLimits()"
+              >
+                Ignore limits
+              </button>
             </div>
           </div>
           <div class="w-100 mt-5">
@@ -204,11 +218,12 @@
       <br />
     </div>
     <script>
+      let ignoreLimits = 0;
       // motors
       const minMotorStep = 5000;
 
-      const ws = new WebSocket("ws://" + window.location.hostname + ":8085");
-      // const ws = new WebSocket("ws://" + window.location.hostname);
+      // const ws = new WebSocket("ws://" + window.location.hostname + ":8085");
+      const ws = new WebSocket("ws://" + window.location.hostname);
 
       ws.onopen = (event) => {
         ws.send("getBlindsPosition");
@@ -221,6 +236,7 @@
           const position = parseInt(event.data.split(":")[4]);
           const target = parseInt(event.data.split(":")[6]);
           const limit = parseInt(event.data.split(":")[8]);
+          const ignoreLimits = parseInt(event.data.split(":")[10]);
           const imageElementId = motorId === 0 ? "balcony" : "window";
           const positionElementId =
             motorId === 0 ? "balconyPosition" : "windowPosition";
@@ -229,7 +245,9 @@
           document.getElementById(positionElementId).innerText = position;
           document.getElementById(targetElementId).innerText = target;
 
-          const scale = Math.fround(position / limit);
+          let scale = Math.fround(position / limit);
+          if (scale > 1) scale = 1;
+          if (scale < 0) scale = 0;
           document.getElementById(imageElementId).style.transform =
             "scaleY(" + scale + ")";
         }
@@ -265,6 +283,17 @@
       setLimit = (motorId) => {
         const pass = document.getElementById("pass").value;
         ws.send("setLimit:" + motorId + ":" + CryptoJS.SHA256(pass).toString());
+      };
+
+      setIgnoreLimits = () => {
+        const pass = document.getElementById("pass").value;
+        ws.send(
+          "setIgnoreLimits:" +
+            ignoreLimits +
+            ":" +
+            CryptoJS.SHA256(pass).toString()
+        );
+        ignoreLimits = ignoreLimits == 1 ? 0 : 1;
       };
 
       window.addEventListener("DOMContentLoaded", (event) => {

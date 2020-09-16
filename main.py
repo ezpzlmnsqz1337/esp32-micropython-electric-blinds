@@ -14,6 +14,8 @@ motors = (
 timMotor = machine.Timer(1)
 timState = machine.Timer(2)
 
+motorsLock = False
+
 
 def moveMotors():
     for m in motors:
@@ -29,26 +31,27 @@ timMotor.init(period=1, mode=machine.Timer.PERIODIC,
 
 def sendMotorsPosition(webSocket):
     for i, m in enumerate(motors):
-        webSocket.SendText('blindsPosition:motor:%i:position:%i:target:%i:limit:%i' %
-                           (i, m.getPosition(), m.getTargetPosition(), m.getLimit()))
+        ignore = 1 if m.getIgnoreLimits() == True else 0
+        webSocket.SendText('blindsPosition:motor:%i:position:%i:target:%i:limit:%i:ignoreLimit:%i' %
+                           (i, m.getPosition(), m.getTargetPosition(), m.getLimit(), ignore))
 
 
 def goUp(webSocket, msg):
     index = int(msg.split(':')[1])
     steps = int(msg.split(':')[2])
     motor = motors[index]
-    motor.setTargetPosition(motor.getTargetPosition() + steps)
+    motor.setTargetPosition(motor.getTargetPosition() - steps)
     webSocket.SendText('motor:%i:goto:%s ' %
-                       (index, motor.getTargetPosition() + steps))
+                       (index, motor.getTargetPosition() - steps))
 
 
 def goDown(webSocket, msg):
     index = int(msg.split(':')[1])
     steps = int(msg.split(':')[2])
     motor = motors[index]
-    motor.setTargetPosition(motor.getTargetPosition() - steps)
+    motor.setTargetPosition(motor.getTargetPosition() + steps)
     webSocket.SendText('motor:%i:go to: %i' %
-                       (index, motor.getTargetPosition() - steps))
+                       (index, motor.getTargetPosition() + steps))
 
 
 def stop(webSocket, msg):
@@ -94,6 +97,16 @@ def setLimit(webSocket, msg):
         webSocket.SendText('setLimit:motor:%i:position:%i' %
                            (index, motor.getPosition()))
 
+
+def setIgnoreLimits(webSocket, msg):
+    password = msg.split(':')[2]
+    if password == USER_PASSWORD:
+        ignoreLimits = True if msg.split(':')[1] == '1' else False
+        for m in motors:
+            m.setIgnoreLimits(ignoreLimits)
+        webSocket.SendText('setIgnoreLimits:%i' % ignoreLimits)
+
+
 # web server part from here
 
 
@@ -124,6 +137,8 @@ def _recvTextCallback(webSocket, msg):
         setLimit(webSocket, msg)
     elif 'getBlindsPosition' in msg:
         sendMotorsPosition(webSocket)
+    elif 'setIgnoreLimits' in msg:
+        setIgnoreLimits(webSocket, msg)
 
 
 def _recvBinaryCallback(webSocket, data):

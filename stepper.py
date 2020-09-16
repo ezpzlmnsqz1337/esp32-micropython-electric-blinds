@@ -16,6 +16,7 @@ class MyStepper:
         self.limit = 0
         self.invertDir = False
         self.disabled = True
+        self.ignoreLimits = False
 
         self.stepMap = (self.step1,
                         self.step2,
@@ -54,10 +55,23 @@ class MyStepper:
     def getTargetPosition(self):
         return self.target
 
+    def setIgnoreLimits(self, ignore):
+        self.ignoreLimits = ignore
+
+    def getIgnoreLimits(self):
+        return self.ignoreLimits
+
     def move(self):
-        if self.position == self.target or self.position <= self.limit or self.position >= self.limit:
-            self.disable()
-        if self.position < self.target:
+        if not self.ignoreLimits:
+            if self.target > self.limit:
+                self.target = self.limit
+            elif self.target <= 0:
+                self.target = 0
+
+        if self.position == self.target:
+            if not self.disabled:
+                self.disable()
+        elif self.position < self.target:
             if self.invertDir:
                 self.stepCCW()
             else:
@@ -73,6 +87,7 @@ class MyStepper:
         self.pin1.value(0)
         self.pin2.value(0)
         self.pin3.value(0)
+        self.disabled = True
         # self.saveState()
 
     def saveState(self):
@@ -89,14 +104,13 @@ class MyStepper:
             self.disabled = False
 
     def stepCW(self):
-        self.currentStep = self.currentStep + \
-            1 if self.currentStep < (len(self.stepMap)-1) else 0
+        self.currentStep = (self.currentStep + 1) % len(self.stepMap)
         self.stepMap[self.currentStep]()
         self.position += -1 if self.invertDir else 1
 
     def stepCCW(self):
         self.currentStep = self.currentStep - \
-            1 if self.currentStep > 0 else (len(self.stepMap)-1)
+            1 if self.currentStep > 0 else (len(self.stepMap) - 1)
         self.stepMap[self.currentStep]()
         self.position += 1 if self.invertDir else -1
 
