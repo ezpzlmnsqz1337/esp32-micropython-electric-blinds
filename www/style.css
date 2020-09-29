@@ -1,0 +1,38 @@
+body {
+  background-color: white;
+}
+
+.balcony {
+  height: 20rem;
+  width: 10rem;
+  position: relative;
+  margin: 0 auto;
+}
+
+.frame {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  border: 1rem solid #d4dce4;
+  background-color: #d9f6ff;
+  z-index: 1;
+}
+
+.blind {
+  position: absolute;
+  z-index: 10;
+  height: 100%;
+  width: 100%;
+  background-color: #7d7b90;
+  border-bottom: none;
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 1s;
+}
+
+.window {
+  height: 11rem;
+  width: 10rem;
+  position: relative;
+  margin: 0 auto;
+}

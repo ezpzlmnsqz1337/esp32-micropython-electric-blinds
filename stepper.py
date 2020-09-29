@@ -41,6 +41,9 @@ class MyStepper:
     def setLimit(self):
         self.limit = self.position
 
+    def setLimit(self, limit):
+        self.limit = limit
+
     def getLimit(self):
         return self.limit
 

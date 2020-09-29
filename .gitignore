@@ -1,4 +1,6 @@
 .vscode
+.micropy
+__pycache__
 MicroWebSrv
 webrepl
 **/node_modules
