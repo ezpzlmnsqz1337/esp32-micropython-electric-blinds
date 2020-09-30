@@ -19,9 +19,9 @@ def subscribe(callback):
     #   Caveat: a secure connection uses about 9k bytes of the heap
     #         (about 1/4 of the micropython heap on the ESP8266 platform)
     ADAFRUIT_IO_URL = b'io.adafruit.com'
-    ADAFRUIT_USERNAME = b'ezpzlmnsqz1337'
-    ADAFRUIT_IO_KEY = b'aio_bugv6280YvKRrteaHgNKkTsKRFLv'
-    ADAFRUIT_IO_FEEDNAME = b'blinds'
+    ADAFRUIT_USERNAME = b'YOUR_USERNAME_HERE'
+    ADAFRUIT_IO_KEY = b'YOUR_KEY_HERE'
+    ADAFRUIT_IO_FEEDNAME = b'YOUR_FEEDNAME_HERE'
 
     global client
     client = MQTTClient(client_id=mqtt_client_id,
