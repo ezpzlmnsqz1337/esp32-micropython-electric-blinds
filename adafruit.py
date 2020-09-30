@@ -20,15 +20,16 @@ def subscribe(callback):
     #         (about 1/4 of the micropython heap on the ESP8266 platform)
 
     ADAFRUIT_IO_URL = b'io.adafruit.com'
-    ADAFRUIT_USERNAME = b'ezpzlmnsqz1337'
-    ADAFRUIT_IO_KEY = b'aio_nOdI67jTR4peC7X2GMFWzVWfOd6d'
-    ADAFRUIT_IO_FEEDNAME = b'blinds'
+    ADAFRUIT_USERNAME = b'YOUR_USERNAME'
+    ADAFRUIT_IO_KEY = b'YOUR_KEY'
+    ADAFRUIT_IO_FEEDNAME = b'FEED_NAME'
 
     global client
     client = MQTTClient(client_id=mqtt_client_id,
                         server=ADAFRUIT_IO_URL,
                         user=ADAFRUIT_USERNAME,
                         password=ADAFRUIT_IO_KEY,
+                        keepalive=30,
                         ssl=False)
 
     try:
