@@ -46,7 +46,8 @@ def saveConfig():
     if(shouldStorePosition):
         with open('config', 'w') as f:
             for m in motors:
-                f.writelines([m.getPosition(), m.getLimit()])
+                f.writelines([str(m.getPosition()), '\n',
+                              str(m.getLimit()), '\n'])
         shouldStorePosition = False
 
 
