@@ -21,7 +21,7 @@ def subscribe(callback):
 
     ADAFRUIT_IO_URL = b'io.adafruit.com'
     ADAFRUIT_USERNAME = b'ezpzlmnsqz1337'
-    ADAFRUIT_IO_KEY = b'aio_bugv6280YvKRrteaHgNKkTsKRFLv'
+    ADAFRUIT_IO_KEY = b'aio_nOdI67jTR4peC7X2GMFWzVWfOd6d'
     ADAFRUIT_IO_FEEDNAME = b'blinds'
 
     global client
