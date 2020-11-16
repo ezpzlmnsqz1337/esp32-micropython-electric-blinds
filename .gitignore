@@ -11,3 +11,4 @@ requirements.txt
 uploadAll.sh
 pass
 adaconfig
+reset.py

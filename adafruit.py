@@ -9,7 +9,11 @@ client = None
 ADAFRUIT_IO_URL = ''
 ADAFRUIT_USERNAME = ''
 ADAFRUIT_IO_KEY = ''
-ADAFRUIT_IO_FEEDNAME = '' 
+ADAFRUIT_IO_FEEDNAME = ''
+
+
+def readLineFromFileAsBytes(file):
+    return bytes(file.readline().rstrip('\n').rstrip('\r'), 'utf-8')
 
 
 def subscribe(callback):
@@ -24,17 +28,22 @@ def subscribe(callback):
     #   set MQTTClient initializer parameter to "ssl=True"
     #   Caveat: a secure connection uses about 9k bytes of the heap
     #         (about 1/4 of the micropython heap on the ESP8266 platform)
-  
+
     global ADAFRUIT_IO_URL
     global ADAFRUIT_USERNAME
     global ADAFRUIT_IO_KEY
     global ADAFRUIT_IO_FEEDNAME
 
     with open('adaconfig', 'r') as f:
-        ADAFRUIT_IO_URL = f.readline()
-        ADAFRUIT_USERNAME = f.readline()
-        ADAFRUIT_IO_KEY = f.readline()
-        ADAFRUIT_IO_FEEDNAME = f.readline()    
+        ADAFRUIT_IO_URL = readLineFromFileAsBytes(f)
+        ADAFRUIT_USERNAME = readLineFromFileAsBytes(f)
+        ADAFRUIT_IO_KEY = readLineFromFileAsBytes(f)
+        ADAFRUIT_IO_FEEDNAME = readLineFromFileAsBytes(f)
+
+    print(ADAFRUIT_IO_URL)
+    print(ADAFRUIT_USERNAME)
+    # print(ADAFRUIT_IO_KEY)
+    print(ADAFRUIT_IO_FEEDNAME)
 
     global client
     client = MQTTClient(client_id=mqtt_client_id,
@@ -47,24 +56,35 @@ def subscribe(callback):
         client.connect()
     except Exception as e:
         print('could not connect to MQTT server {}{}'.format(type(e).__name__, e))
-        sys.exit()
+        # sys.exit()
 
-    mqtt_feedname = bytes(ADAFRUIT_USERNAME + '/feeds/' + ADAFRUIT_IO_FEEDNAME, 'utf-8')
+    mqtt_feedname = bytes(ADAFRUIT_USERNAME.decode('utf-8') + '/feeds/' +
+                          ADAFRUIT_IO_FEEDNAME.decode('utf-8'), 'utf-8')
+    print(mqtt_feedname)
     client.set_callback(callback)
     client.subscribe(mqtt_feedname)
+
 
 def retry(callback):
     # print('retry')
     global client
+
+    global ADAFRUIT_IO_URL
+    global ADAFRUIT_USERNAME
+    global ADAFRUIT_IO_KEY
+    global ADAFRUIT_IO_FEEDNAME
+
     try:
         client.connect()
     except Exception as e:
         print('could not connect to MQTT server {}{}'.format(type(e).__name__, e))
-        sys.exit()
+        # sys.exit()
 
-    mqtt_feedname = bytes(ADAFRUIT_USERNAME + '/feeds/' + ADAFRUIT_IO_FEEDNAME, 'utf-8')
+    mqtt_feedname = bytes(ADAFRUIT_USERNAME.decode('utf-8') + '/feeds/' +
+                          ADAFRUIT_IO_FEEDNAME.decode('utf-8'), 'utf-8')
     client.set_callback(callback)
     client.subscribe(mqtt_feedname)
+
 
 def check():
     # print('check')

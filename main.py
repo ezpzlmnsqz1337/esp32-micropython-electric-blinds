@@ -3,12 +3,11 @@ import machine
 import stepper
 import adafruit
 
-shouldStorePosition = False
-
 
 USER_PASSWORD = ''
+
 with open('pass', 'r') as f:
-    USER_PASSWORD = f.readline()
+    USER_PASSWORD = f.readline().rstrip('\n').rstrip('\r')
 
 
 motors = (
@@ -42,19 +41,14 @@ timMotor.init(period=1, mode=machine.Timer.PERIODIC,
 
 
 def saveConfig():
-    global shouldStorePosition
-    if(shouldStorePosition):
-        with open('config', 'w') as f:
-            for m in motors:
-                f.write(str(m.getPosition()) + '\n')
-                f.write(str(m.getLimit()) + '\n')
-        shouldStorePosition = False
-
-
-timSave.init(period=300000, mode=machine.Timer.PERIODIC,
-             callback=lambda t: saveConfig())
+    with open('config', 'w') as f:
+        for m in motors:
+            f.write(str(m.getTargetPosition()) + '\n')
+            f.write(str(m.getLimit()) + '\n')
 
 # adafruit.io part
+
+
 def adafruitCb(topic, data):
     print('ADA CB ' + str(data))
     for m in motors:
@@ -63,11 +57,13 @@ def adafruitCb(topic, data):
         elif data == b'CLOSE':
             m.setTargetPosition(m.getLimit())
 
+
 def checkAda():
     try:
         adafruit.check()
     except:
         adafruit.retry(adafruitCb)
+
 
 adafruit.subscribe(adafruitCb)
 
@@ -91,6 +87,7 @@ def goUp(webSocket, msg):
     motor.setTargetPosition(motor.getTargetPosition() - steps)
     webSocket.SendText('motor:%i:goto:%s ' %
                        (index, motor.getTargetPosition() - steps))
+    saveConfig()
 
 
 def goDown(webSocket, msg):
@@ -100,6 +97,7 @@ def goDown(webSocket, msg):
     motor.setTargetPosition(motor.getTargetPosition() + steps)
     webSocket.SendText('motor:%i:go to: %i' %
                        (index, motor.getTargetPosition() + steps))
+    saveConfig()
 
 
 def stop(webSocket, msg):
@@ -108,6 +106,7 @@ def stop(webSocket, msg):
     motor.setTargetPosition(motor.getPosition())
     motor.disable()
     webSocket.SendText('motor:%i, stop' % index)
+    saveConfig()
 
 
 def closeBlinds(webSocket, msg):
@@ -116,6 +115,7 @@ def closeBlinds(webSocket, msg):
     motor.setTargetPosition(motor.getLimit())
     webSocket.SendText('motor: %i, close, limit: %i ' %
                        (index, motor.getLimit()))
+    saveConfig()
 
 
 def openBlinds(webSocket, msg):
@@ -124,6 +124,7 @@ def openBlinds(webSocket, msg):
     motor.setTargetPosition(0)
     webSocket.SendText('motor: %i, open, bottom limit: %i ' %
                        (index, 0))
+    saveConfig()
 
 
 def setTopPosition(webSocket, msg):
@@ -132,9 +133,9 @@ def setTopPosition(webSocket, msg):
         index = int(msg.split(':')[1])
         motor = motors[index]
         motor.setTopPosition()
-        saveConfig()
         webSocket.SendText('setTopPosition:motor:%i:position:%i' %
                            (index, motor.getPosition()))
+        saveConfig()
 
 
 def setLimit(webSocket, msg):
@@ -142,10 +143,10 @@ def setLimit(webSocket, msg):
     if password == USER_PASSWORD:
         index = int(msg.split(':')[1])
         motor = motors[index]
-        motor.setLimit()
-        saveConfig()
+        motor.setLimit(motor.getTargetPosition())
         webSocket.SendText('setLimit:motor:%i:position:%i' %
                            (index, motor.getPosition()))
+        saveConfig()
 
 
 def setIgnoreLimits(webSocket, msg):
@@ -171,8 +172,6 @@ def _acceptWebSocketCallback(webSocket, httpClient):
 
 
 def _recvTextCallback(webSocket, msg):
-    global shouldStorePosition
-    shouldStorePosition = True
     if 'up' in msg:
         goUp(webSocket, msg)
     elif 'down' in msg:
