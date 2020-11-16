@@ -19,12 +19,12 @@ motors = (
 with open('config', 'r') as f:
     for m in motors:
         m.setPosition(int(f.readline()))
+        m.setTargetPosition(m.getPosition())
         m.setLimit(int(f.readline()))
 
 timCheck = machine.Timer(0)
 timMotor = machine.Timer(1)
 timState = machine.Timer(2)
-timSave = machine.Timer(3)
 
 motorsLock = False
 
@@ -46,28 +46,33 @@ def saveConfig():
     if(shouldStorePosition):
         with open('config', 'w') as f:
             for m in motors:
-                f.writelines([str(m.getPosition()), '\n',
-                              str(m.getLimit()), '\n'])
+                f.write(str(m.getPosition()) + '\n')
+                f.write(str(m.getLimit()) + '\n')
         shouldStorePosition = False
 
 
-timSave.init(period=60000, mode=machine.Timer.PERIODIC,
+timSave.init(period=300000, mode=machine.Timer.PERIODIC,
              callback=lambda t: saveConfig())
-
-timCheck.init(period=1000, mode=machine.Timer.PERIODIC,
-              callback=lambda t: adafruit.check())
-
 
 # adafruit.io part
 def adafruitCb(topic, data):
+    print('ADA CB ' + str(data))
     for m in motors:
-        if str(data) == 'OPEN':
+        if data == b'OPEN':
             m.setTargetPosition(0)
-        elif str(data) == 'CLOSE':
+        elif data == b'CLOSE':
             m.setTargetPosition(m.getLimit())
 
+def checkAda():
+    try:
+        adafruit.check()
+    except:
+        adafruit.retry(adafruitCb)
 
 adafruit.subscribe(adafruitCb)
+
+timCheck.init(period=1000, mode=machine.Timer.PERIODIC,
+              callback=lambda t: checkAda())
 
 # web socket callbacks
 
@@ -105,7 +110,7 @@ def stop(webSocket, msg):
     webSocket.SendText('motor:%i, stop' % index)
 
 
-def close(webSocket, msg):
+def closeBlinds(webSocket, msg):
     index = int(msg.split(':')[1])
     motor = motors[index]
     motor.setTargetPosition(motor.getLimit())
@@ -113,7 +118,7 @@ def close(webSocket, msg):
                        (index, motor.getLimit()))
 
 
-def open(webSocket, msg):
+def openBlinds(webSocket, msg):
     index = int(msg.split(':')[1])
     motor = motors[index]
     motor.setTargetPosition(0)
@@ -175,9 +180,9 @@ def _recvTextCallback(webSocket, msg):
     elif 'stop' in msg:
         stop(webSocket, msg)
     elif 'close' in msg:
-        close(webSocket, msg)
+        closeBlinds(webSocket, msg)
     elif 'open' in msg:
-        open(webSocket, msg)
+        openBlinds(webSocket, msg)
     elif 'setTopPosition' in msg:
         setTopPosition(webSocket, msg)
     elif 'setLimit' in msg:
