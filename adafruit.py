@@ -56,6 +56,9 @@ def subscribe(callback):
         client.connect()
     except Exception as e:
         print('could not connect to MQTT server {}{}'.format(type(e).__name__, e))
+        with open('log.txt', 'a') as logfile:
+            logfile.write('could not connect to MQTT server {}{}\n'.format(
+                type(e).__name__, e))
         # sys.exit()
 
     mqtt_feedname = bytes(ADAFRUIT_USERNAME.decode('utf-8') + '/feeds/' +
@@ -78,6 +81,9 @@ def retry(callback):
         client.connect()
     except Exception as e:
         print('could not connect to MQTT server {}{}'.format(type(e).__name__, e))
+        with open('log.txt', 'a') as logfile:
+            logfile.write('could not connect to MQTT server {}{}\n'.format(
+                type(e).__name__, e))
         # sys.exit()
 
     mqtt_feedname = bytes(ADAFRUIT_USERNAME.decode('utf-8') + '/feeds/' +
