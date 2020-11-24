@@ -40,17 +40,12 @@ def subscribe(callback):
         ADAFRUIT_IO_KEY = readLineFromFileAsBytes(f)
         ADAFRUIT_IO_FEEDNAME = readLineFromFileAsBytes(f)
 
-    print(ADAFRUIT_IO_URL)
-    print(ADAFRUIT_USERNAME)
-    # print(ADAFRUIT_IO_KEY)
-    print(ADAFRUIT_IO_FEEDNAME)
-
     global client
     client = MQTTClient(client_id=mqtt_client_id,
                         server=ADAFRUIT_IO_URL,
                         user=ADAFRUIT_USERNAME,
                         password=ADAFRUIT_IO_KEY,
-                        ssl=False)
+                        ssl=True)
 
     try:
         client.connect()
@@ -59,35 +54,13 @@ def subscribe(callback):
         with open('log.txt', 'a') as logfile:
             logfile.write('could not connect to MQTT server {}{}\n'.format(
                 type(e).__name__, e))
+            logfile.write('Restarting\n')
+        # machine.reset()
         # sys.exit()
 
     mqtt_feedname = bytes(ADAFRUIT_USERNAME.decode('utf-8') + '/feeds/' +
                           ADAFRUIT_IO_FEEDNAME.decode('utf-8'), 'utf-8')
-    print(mqtt_feedname)
-    client.set_callback(callback)
-    client.subscribe(mqtt_feedname)
 
-
-def retry(callback):
-    # print('retry')
-    global client
-
-    global ADAFRUIT_IO_URL
-    global ADAFRUIT_USERNAME
-    global ADAFRUIT_IO_KEY
-    global ADAFRUIT_IO_FEEDNAME
-
-    try:
-        client.connect()
-    except Exception as e:
-        print('could not connect to MQTT server {}{}'.format(type(e).__name__, e))
-        with open('log.txt', 'a') as logfile:
-            logfile.write('could not connect to MQTT server {}{}\n'.format(
-                type(e).__name__, e))
-        # sys.exit()
-
-    mqtt_feedname = bytes(ADAFRUIT_USERNAME.decode('utf-8') + '/feeds/' +
-                          ADAFRUIT_IO_FEEDNAME.decode('utf-8'), 'utf-8')
     client.set_callback(callback)
     client.subscribe(mqtt_feedname)
 

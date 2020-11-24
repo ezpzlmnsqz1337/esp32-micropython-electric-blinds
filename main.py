@@ -2,7 +2,7 @@ from microWebSrv import MicroWebSrv
 import machine
 import stepper
 import adafruit
-
+import time
 
 USER_PASSWORD = ''
 
@@ -29,15 +29,16 @@ motorsLock = False
 
 
 def moveMotors():
+    ready = 0
     for m in motors:
-        m.move()
+        if not m.move():
+            ready += 1
+
+    if ready == 2:
+        timMotor.deinit()
 
 
 motors[0].invertDirection(True)
-
-
-timMotor.init(period=1, mode=machine.Timer.PERIODIC,
-              callback=lambda t: moveMotors())
 
 
 def saveConfig():
@@ -45,6 +46,12 @@ def saveConfig():
         for m in motors:
             f.write(str(m.getTargetPosition()) + '\n')
             f.write(str(m.getLimit()) + '\n')
+
+
+def startMotors():
+    timMotor.deinit()
+    timMotor.init(period=1, mode=machine.Timer.PERIODIC,
+                  callback=lambda t: moveMotors())
 
 # adafruit.io part
 
@@ -56,17 +63,25 @@ def adafruitCb(topic, data):
             m.setTargetPosition(0)
         elif data == b'CLOSE':
             m.setTargetPosition(m.getLimit())
+    saveConfig()
+    # start motors
+    startMotors()
 
 
 def checkAda():
+    print('Check ada')
     try:
         adafruit.check()
-    except:
-        adafruit.retry(adafruitCb)
+    except Exception as e:
+        print('Check for feed value failed {}{}\n'.format(
+            type(e).__name__, e))
+        # with open('log.txt', 'a') as logfile:
+        #     logfile.write('Check for feed value failed {}{}\n'.format(
+        #         type(e).__name__, e))
+        machine.reset()
 
 
 adafruit.subscribe(adafruitCb)
-
 timCheck.init(period=1000, mode=machine.Timer.PERIODIC,
               callback=lambda t: checkAda())
 
@@ -88,6 +103,7 @@ def goUp(webSocket, msg):
     webSocket.SendText('motor:%i:goto:%s ' %
                        (index, motor.getTargetPosition() - steps))
     saveConfig()
+    startMotors()
 
 
 def goDown(webSocket, msg):
@@ -98,6 +114,7 @@ def goDown(webSocket, msg):
     webSocket.SendText('motor:%i:go to: %i' %
                        (index, motor.getTargetPosition() + steps))
     saveConfig()
+    startMotors()
 
 
 def stop(webSocket, msg):
@@ -107,6 +124,7 @@ def stop(webSocket, msg):
     motor.disable()
     webSocket.SendText('motor:%i, stop' % index)
     saveConfig()
+    startMotors()
 
 
 def closeBlinds(webSocket, msg):
@@ -116,6 +134,7 @@ def closeBlinds(webSocket, msg):
     webSocket.SendText('motor: %i, close, limit: %i ' %
                        (index, motor.getLimit()))
     saveConfig()
+    startMotors()
 
 
 def openBlinds(webSocket, msg):
@@ -125,6 +144,7 @@ def openBlinds(webSocket, msg):
     webSocket.SendText('motor: %i, open, bottom limit: %i ' %
                        (index, 0))
     saveConfig()
+    startMotors()
 
 
 def setTopPosition(webSocket, msg):
@@ -162,6 +182,7 @@ def setIgnoreLimits(webSocket, msg):
 
 
 def _acceptWebSocketCallback(webSocket, httpClient):
+    timMotor.deinit()
     print('WS ACCEPT')
     webSocket.RecvTextCallback = _recvTextCallback
     webSocket.RecvBinaryCallback = _recvBinaryCallback
@@ -169,6 +190,7 @@ def _acceptWebSocketCallback(webSocket, httpClient):
 
     timState.init(period=1000, mode=machine.Timer.PERIODIC,
                   callback=lambda t: sendMotorsPosition(webSocket))
+    startMotors()
 
 
 def _recvTextCallback(webSocket, msg):
@@ -212,11 +234,11 @@ def _closedCallback(webSocket):
 # ]
 
 
-srv = MicroWebSrv(webPath='www/')
-srv.MaxWebSocketRecvLen = 256
-srv.WebSocketThreaded = True
-srv.AcceptWebSocketCallback = _acceptWebSocketCallback
-srv.Start(threaded=True)
-print('server started')
+# srv = MicroWebSrv(webPath='www/')
+# srv.MaxWebSocketRecvLen = 256
+# srv.WebSocketThreaded = True
+# srv.AcceptWebSocketCallback = _acceptWebSocketCallback
+# srv.Start(threaded=True)
+# print('server started')
 
 # ----------------------------------------------------------------------------
