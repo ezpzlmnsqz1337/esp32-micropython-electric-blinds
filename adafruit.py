@@ -45,6 +45,7 @@ def subscribe(callback):
                         server=ADAFRUIT_IO_URL,
                         user=ADAFRUIT_USERNAME,
                         password=ADAFRUIT_IO_KEY,
+                        keepalive=0,
                         ssl=True)
 
     try:
@@ -62,6 +63,15 @@ def subscribe(callback):
     client.subscribe(mqtt_feedname)
 
 
+def retry():
+    global client
+    try:
+        client.connect()
+    except Exception as e:
+        print('could not connect to MQTT server2 {}{}'.format(
+            type(e).__name__, e))
+
+
 def check():
     global client
     client.check_msg()
@@ -72,7 +82,6 @@ def publish(message):
     mqtt_feedname = bytes(ADAFRUIT_USERNAME.decode('utf-8') + '/feeds/' +
                           ADAFRUIT_IO_FEEDNAME.decode('utf-8'), 'utf-8')
     print('publishing: ')
-    testik = bytes(message, 'utf-8')
-    print(str(testik))
+    print(str(bytes(message, 'utf-8')))
     print(str(mqtt_feedname))
     client.publish(mqtt_feedname, bytes(message, 'utf-8'))

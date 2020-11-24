@@ -14,6 +14,9 @@ motors = (
     stepper.MyStepper(13, 12, 14, 27, 1)
 )
 
+for m in motors:
+    m.disable()
+
 with open('config', 'r') as f:
     for m in motors:
         m.setPosition(int(f.readline()))
@@ -60,9 +63,9 @@ def adafruitCb(topic, msg):
         goDown(msg)
     elif 'stop' in msg:
         stop(msg)
-    elif 'close' in msg:
+    elif 'closeBlind' in msg:
         closeBlind(msg)
-    elif 'open' in msg:
+    elif 'openBlind' in msg:
         openBlind(msg)
     elif 'OPEN' in msg:
         openBlinds()
@@ -86,7 +89,7 @@ def checkAda():
     except Exception as e:
         print('Check for feed value failed {}{}\n'.format(
             type(e).__name__, e))
-        # adafruit.subscribe(adafruitCb)
+        adafruit.retry()
         # machine.reset()
 
 
