@@ -1,15 +1,14 @@
-from microWebSrv import MicroWebSrv
 import machine
 import stepper
 import adafruit
-import time
 
+# handle password for configuration over web page/adafruit feed
 USER_PASSWORD = ''
 
 with open('pass', 'r') as f:
     USER_PASSWORD = f.readline().rstrip('\n').rstrip('\r')
 
-
+# motors settings
 motors = (
     stepper.MyStepper(5, 18, 19, 21, 0),
     stepper.MyStepper(13, 12, 14, 27, 1)
@@ -23,9 +22,6 @@ with open('config', 'r') as f:
 
 timCheck = machine.Timer(0)
 timMotor = machine.Timer(1)
-timState = machine.Timer(2)
-
-motorsLock = False
 
 
 def moveMotors():
@@ -56,189 +52,152 @@ def startMotors():
 # adafruit.io part
 
 
-def adafruitCb(topic, data):
-    print('ADA CB ' + str(data))
-    for m in motors:
-        if data == b'OPEN':
-            m.setTargetPosition(0)
-        elif data == b'CLOSE':
-            m.setTargetPosition(m.getLimit())
-    saveConfig()
-    # start motors
-    startMotors()
+def adafruitCb(topic, msg):
+    print('ADA CB ' + str(msg))
+    if 'up' in msg:
+        goUp(msg)
+    elif 'down' in msg:
+        goDown(msg)
+    elif 'stop' in msg:
+        stop(msg)
+    elif 'close' in msg:
+        closeBlind(msg)
+    elif 'open' in msg:
+        openBlind(msg)
+    elif 'OPEN' in msg:
+        openBlinds()
+    elif 'CLOSE' in msg:
+        closeBlinds()
+    elif 'setTopPosition' in msg:
+        setTopPosition(msg)
+    elif 'setLimit' in msg:
+        setLimit(msg)
+    elif 'getBlindsPosition' in msg:
+        sendMotorsPosition()
+    elif 'setIgnoreLimits' in msg:
+        setIgnoreLimits(msg)
 
 
 def checkAda():
     print('Check ada')
     try:
-        adafruit.check()
+        adafruit.check()  # check incoming messages
+        # sendMotorsPosition()  # send information about blinds position
     except Exception as e:
         print('Check for feed value failed {}{}\n'.format(
             type(e).__name__, e))
-        # with open('log.txt', 'a') as logfile:
-        #     logfile.write('Check for feed value failed {}{}\n'.format(
-        #         type(e).__name__, e))
-        machine.reset()
+        # adafruit.subscribe(adafruitCb)
+        # machine.reset()
 
 
 adafruit.subscribe(adafruitCb)
 timCheck.init(period=1000, mode=machine.Timer.PERIODIC,
               callback=lambda t: checkAda())
 
-# web socket callbacks
+# blinds operations callbacks
 
 
-def sendMotorsPosition(webSocket):
+def sendMotorsPosition():
     for i, m in enumerate(motors):
         ignore = 1 if m.getIgnoreLimits() == True else 0
-        webSocket.SendText('blindsPosition:motor:%i:position:%i:target:%i:limit:%i:ignoreLimit:%i' %
-                           (i, m.getPosition(), m.getTargetPosition(), m.getLimit(), ignore))
+        adafruit.publish('blindsPosition:motor:%i:position:%i:target:%i:limit:%i:ignoreLimit:%i' %
+                         (i, m.getPosition(), m.getTargetPosition(), m.getLimit(), ignore))
 
 
-def goUp(webSocket, msg):
+def goUp(msg):
     index = int(msg.split(':')[1])
     steps = int(msg.split(':')[2])
     motor = motors[index]
     motor.setTargetPosition(motor.getTargetPosition() - steps)
-    webSocket.SendText('motor:%i:goto:%s ' %
-                       (index, motor.getTargetPosition() - steps))
+    adafruit.publish('motor:%i:goto:%s ' %
+                     (index, motor.getTargetPosition() - steps))
     saveConfig()
     startMotors()
 
 
-def goDown(webSocket, msg):
+def goDown(msg):
     index = int(msg.split(':')[1])
     steps = int(msg.split(':')[2])
     motor = motors[index]
     motor.setTargetPosition(motor.getTargetPosition() + steps)
-    webSocket.SendText('motor:%i:go to: %i' %
-                       (index, motor.getTargetPosition() + steps))
+    adafruit.publish('motor:%i:go to: %i' %
+                     (index, motor.getTargetPosition() + steps))
     saveConfig()
     startMotors()
 
 
-def stop(webSocket, msg):
+def stop(msg):
     index = int(msg.split(':')[1])
     motor = motors[index]
     motor.setTargetPosition(motor.getPosition())
     motor.disable()
-    webSocket.SendText('motor:%i, stop' % index)
+    adafruit.publish('motor:%i, stop' % index)
     saveConfig()
     startMotors()
 
 
-def closeBlinds(webSocket, msg):
+def closeBlind(msg):
     index = int(msg.split(':')[1])
     motor = motors[index]
     motor.setTargetPosition(motor.getLimit())
-    webSocket.SendText('motor: %i, close, limit: %i ' %
-                       (index, motor.getLimit()))
+    adafruit.publish('motor: %i, close, limit: %i ' %
+                     (index, motor.getLimit()))
     saveConfig()
     startMotors()
 
 
-def openBlinds(webSocket, msg):
+def openBlind(msg):
     index = int(msg.split(':')[1])
     motor = motors[index]
     motor.setTargetPosition(0)
-    webSocket.SendText('motor: %i, open, bottom limit: %i ' %
-                       (index, 0))
+    adafruit.publish('motor: %i, open, bottom limit: %i ' %
+                     (index, 0))
     saveConfig()
     startMotors()
 
 
-def setTopPosition(webSocket, msg):
+def openBlinds():
+    for m in motors:
+        m.setTargetPosition(0)
+        adafruit.publish('motors: open')
+    saveConfig()
+    startMotors()
+
+
+def closeBlinds():
+    for m in motors:
+        m.setTargetPosition(m.getLimit())
+    adafruit.publish('motors: close')
+    saveConfig()
+    startMotors()
+
+
+def setTopPosition(msg):
     password = msg.split(':')[2]
     if password == USER_PASSWORD:
         index = int(msg.split(':')[1])
         motor = motors[index]
         motor.setTopPosition()
-        webSocket.SendText('setTopPosition:motor:%i:position:%i' %
-                           (index, motor.getPosition()))
+        adafruit.publish('setTopPosition:motor:%i:position:%i' %
+                         (index, motor.getPosition()))
         saveConfig()
 
 
-def setLimit(webSocket, msg):
+def setLimit(msg):
     password = msg.split(':')[2]
     if password == USER_PASSWORD:
         index = int(msg.split(':')[1])
         motor = motors[index]
         motor.setLimit(motor.getTargetPosition())
-        webSocket.SendText('setLimit:motor:%i:position:%i' %
-                           (index, motor.getPosition()))
+        adafruit.publish('setLimit:motor:%i:position:%i' %
+                         (index, motor.getPosition()))
         saveConfig()
 
 
-def setIgnoreLimits(webSocket, msg):
+def setIgnoreLimits(msg):
     password = msg.split(':')[2]
     if password == USER_PASSWORD:
         ignoreLimits = True if msg.split(':')[1] == '1' else False
         for m in motors:
             m.setIgnoreLimits(ignoreLimits)
-        webSocket.SendText('setIgnoreLimits:%i' % ignoreLimits)
-
-
-# web server part from here
-
-
-def _acceptWebSocketCallback(webSocket, httpClient):
-    timMotor.deinit()
-    print('WS ACCEPT')
-    webSocket.RecvTextCallback = _recvTextCallback
-    webSocket.RecvBinaryCallback = _recvBinaryCallback
-    webSocket.ClosedCallback = _closedCallback
-
-    timState.init(period=1000, mode=machine.Timer.PERIODIC,
-                  callback=lambda t: sendMotorsPosition(webSocket))
-    startMotors()
-
-
-def _recvTextCallback(webSocket, msg):
-    if 'up' in msg:
-        goUp(webSocket, msg)
-    elif 'down' in msg:
-        goDown(webSocket, msg)
-    elif 'stop' in msg:
-        stop(webSocket, msg)
-    elif 'close' in msg:
-        closeBlinds(webSocket, msg)
-    elif 'open' in msg:
-        openBlinds(webSocket, msg)
-    elif 'setTopPosition' in msg:
-        setTopPosition(webSocket, msg)
-    elif 'setLimit' in msg:
-        setLimit(webSocket, msg)
-    elif 'getBlindsPosition' in msg:
-        sendMotorsPosition(webSocket)
-    elif 'setIgnoreLimits' in msg:
-        setIgnoreLimits(webSocket, msg)
-
-
-def _recvBinaryCallback(webSocket, data):
-    print('WS RECV DATA : %s' % data)
-
-
-def _closedCallback(webSocket):
-    print('WS CLOSED')
-    timState.deinit()
-
-# ----------------------------------------------------------------------------
-
-# routeHandlers = [
-#    ( '/open-balcony',	'GET', motors[0].setTargetPosition(0)),
-#	( '/open-window',	'GET',	motors[0].setTargetPosition(0) ),
-#	( '/open',	'GET',	motors[0].setTargetPosition(0) ),
-#	( '/close-balcony',	'GET',	motors[0].setTargetPosition(0) ),
-#	( '/close-window',	'GET',	motors[0].setTargetPosition(0) ),
-#	( '/close',	'GET',	motors[0].setTargetPosition(0) )
-# ]
-
-
-# srv = MicroWebSrv(webPath='www/')
-# srv.MaxWebSocketRecvLen = 256
-# srv.WebSocketThreaded = True
-# srv.AcceptWebSocketCallback = _acceptWebSocketCallback
-# srv.Start(threaded=True)
-# print('server started')
-
-# ----------------------------------------------------------------------------
+        adafruit.publish('setIgnoreLimits:%i' % ignoreLimits)
