@@ -74,6 +74,7 @@ class MyStepper:
         if self.position == self.target:
             if not self.disabled:
                 self.disable()
+                return False
         elif self.position < self.target:
             if self.invertDir:
                 self.stepCCW()
@@ -84,6 +85,7 @@ class MyStepper:
                 self.stepCW()
             else:
                 self.stepCCW()
+        return True
 
     def disable(self):
         self.pin0.value(0)
