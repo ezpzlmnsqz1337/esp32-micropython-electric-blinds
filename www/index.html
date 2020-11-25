@@ -266,11 +266,11 @@
       };
 
       openBlind = (motorId) => {
-        ws.send("open:" + motorId);
+        ws.send("openBlind:" + motorId);
       };
 
       closeBlind = (motorId) => {
-        ws.send("close:" + motorId);
+        ws.send("closeBlind:" + motorId);
       };
 
       setTopPosition = (motorId) => {
