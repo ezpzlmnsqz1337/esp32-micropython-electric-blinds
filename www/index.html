@@ -222,8 +222,7 @@
       // motors
       const minMotorStep = 5000;
 
-      // const ws = new WebSocket("ws://" + window.location.hostname + ":8085");
-      const ws = new WebSocket("ws://" + window.location.hostname);
+      const ws = new WebSocket(`ws://${window.location.hostname}:8082`);
 
       ws.onopen = (event) => {
         ws.send("getBlindsPosition");

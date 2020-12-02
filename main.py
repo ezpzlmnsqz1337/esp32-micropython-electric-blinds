@@ -1,6 +1,8 @@
 from microWebSrv import MicroWebSrv
 import machine
 import stepper
+import time
+import adafruit
 
 ws = None
 
@@ -65,8 +67,9 @@ def sendMotorsPosition():
     global ws
     for i, m in enumerate(motors):
         ignore = 1 if m.getIgnoreLimits() == True else 0
-        ws.SendText('blindsPosition:motor:%i:position:%i:target:%i:limit:%i:ignoreLimit:%i' %
-                    (i, m.getPosition(), m.getTargetPosition(), m.getLimit(), ignore))
+        if ws != None:
+            ws.SendText('blindsPosition:motor:%i:position:%i:target:%i:limit:%i:ignoreLimit:%i' %
+                        (i, m.getPosition(), m.getTargetPosition(), m.getLimit(), ignore))
 
 
 def goUp(msg):
@@ -75,8 +78,9 @@ def goUp(msg):
     steps = int(msg.split(':')[2])
     motor = motors[index]
     motor.setTargetPosition(motor.getTargetPosition() - steps)
-    ws.SendText('motor:%i:goto:%s ' %
-                (index, motor.getTargetPosition() - steps))
+    if ws != None:
+        ws.SendText('motor:%i:goto:%s ' %
+                    (index, motor.getTargetPosition() - steps))
     saveConfig()
     startMotors()
 
@@ -87,8 +91,9 @@ def goDown(msg):
     steps = int(msg.split(':')[2])
     motor = motors[index]
     motor.setTargetPosition(motor.getTargetPosition() + steps)
-    ws.SendText('motor:%i:go to: %i' %
-                (index, motor.getTargetPosition() + steps))
+    if ws != None:
+        ws.SendText('motor:%i:go to: %i' %
+                    (index, motor.getTargetPosition() + steps))
     saveConfig()
     startMotors()
 
@@ -99,7 +104,8 @@ def stop(msg):
     motor = motors[index]
     motor.setTargetPosition(motor.getPosition())
     motor.disable()
-    ws.SendText('motor:%i, stop' % index)
+    if ws != None:
+        ws.SendText('motor:%i, stop' % index)
     saveConfig()
     startMotors()
 
@@ -108,8 +114,9 @@ def closeBlinds():
     global ws
     for m in motors:
         m.setTargetPosition(m.getLimit())
-        ws.SendText('motors, close, limit: %i ' %
-                    (m.getLimit()))
+        if ws != None:
+            ws.SendText('motors, close, limit: %i ' %
+                        (m.getLimit()))
     saveConfig()
     startMotors()
 
@@ -118,8 +125,9 @@ def openBlinds():
     global ws
     for m in motors:
         m.setTargetPosition(0)
-        ws.SendText('motors: open, bottom limit: %i ' %
-                    (0))
+        if ws != None:
+            ws.SendText('motors: open, bottom limit: %i ' %
+                        (0))
     saveConfig()
     startMotors()
 
@@ -129,8 +137,9 @@ def closeBlind(msg):
     index = int(msg.split(':')[1])
     motor = motors[index]
     motor.setTargetPosition(motor.getLimit())
-    ws.SendText('motor: %i, close, limit: %i ' %
-                (index, motor.getLimit()))
+    if ws != None:
+        ws.SendText('motor: %i, close, limit: %i ' %
+                    (index, motor.getLimit()))
     saveConfig()
     startMotors()
 
@@ -140,8 +149,9 @@ def openBlind(msg):
     index = int(msg.split(':')[1])
     motor = motors[index]
     motor.setTargetPosition(0)
-    ws.SendText('motor: %i, open, bottom limit: %i ' %
-                (index, 0))
+    if ws != None:
+        ws.SendText('motor: %i, open, bottom limit: %i ' %
+                    (index, 0))
     saveConfig()
     startMotors()
 
@@ -153,8 +163,9 @@ def setTopPosition(msg):
         index = int(msg.split(':')[1])
         motor = motors[index]
         motor.setTopPosition()
-        ws.SendText('setTopPosition:motor:%i:position:%i' %
-                    (index, motor.getPosition()))
+        if ws != None:
+            ws.SendText('setTopPosition:motor:%i:position:%i' %
+                        (index, motor.getPosition()))
         saveConfig()
 
 
@@ -165,8 +176,9 @@ def setLimit(msg):
         index = int(msg.split(':')[1])
         motor = motors[index]
         motor.setLimit(motor.getTargetPosition())
-        ws.SendText('setLimit:motor:%i:position:%i' %
-                    (index, motor.getPosition()))
+        if ws != None:
+            ws.SendText('setLimit:motor:%i:position:%i' %
+                        (index, motor.getPosition()))
         saveConfig()
 
 
@@ -177,7 +189,9 @@ def setIgnoreLimits(msg):
         ignoreLimits = True if msg.split(':')[1] == '1' else False
         for m in motors:
             m.setIgnoreLimits(ignoreLimits)
-        ws.SendText('setIgnoreLimits:%i' % ignoreLimits)
+
+        if ws != None:
+            ws.SendText('setIgnoreLimits:%i' % ignoreLimits)
 
 
 # web server part from here
@@ -231,17 +245,27 @@ def _closedCallback(webSocket):
 # ----------------------------------------------------------------------------
 
 
-routeHandlers = [
-    ('/open-balcony',	'GET', lambda t: openBlind('openBlind:0')),
-    ('/open-window',	'GET', lambda t: openBlind('openBlind:1')),
-    ('/open',	'GET', lambda t: openBlinds()),
-    ('/close-balcony',	'GET', lambda t: closeBlind('closeBlind:0')),
-    ('/close-window',	'GET', lambda t: closeBlind('closeBlind:1')),
-    ('/close',	'GET', lambda t: closeBlinds())
-]
+@MicroWebSrv.route('/open')
+def handlerFuncGet(httpClient, httpResponse):
+    openBlinds()
 
 
-srv = MicroWebSrv(webPath='www/', routeHandlers=routeHandlers)
+@MicroWebSrv.route('/close')
+def handlerFuncGet(httpClient, httpResponse):
+    closeBlinds()
+
+# routeHandlers = [
+#     ('/open-balcony',	'GET', lambda t: openBlind('openBlind:0')),
+#     ('/open-window',	'GET', lambda t: openBlind('openBlind:1')),
+#     ('/open',	'GET', lambda t: openBlinds()),
+#     ('/close-balcony',	'GET', lambda t: closeBlind('closeBlind:0')),
+#     ('/close-window',	'GET', lambda t: closeBlind('closeBlind:1')),
+#     ('/close',	'GET', lambda t: closeBlinds())
+# ]
+
+
+# , routeHandlers=routeHandlers)
+srv = MicroWebSrv(webPath='www/', port='8082')
 srv.MaxWebSocketRecvLen = 256
 srv.WebSocketThreaded = True
 srv.AcceptWebSocketCallback = _acceptWebSocketCallback
@@ -249,3 +273,33 @@ srv.Start(threaded=True)
 print('server started')
 
 # ----------------------------------------------------------------------------
+
+# adafruit
+
+
+def adafruitCb(topic, data):
+    print('ADA CB ' + str(data))
+    for m in motors:
+        if data == b'OPEN':
+            openBlinds()
+        elif data == b'CLOSE':
+            closeBlinds()
+    saveConfig()
+    startMotors()
+
+
+def checkAda():
+    try:
+        adafruit.check()
+    except Exception as e:
+        print('Check for feed value failed {}{}\n'.format(
+            type(e).__name__, e))
+        adafruit.subscribe(adafruitCb)
+        # machine.reset()
+
+
+adafruit.subscribe(adafruitCb)
+
+while True:
+    checkAda()
+    time.sleep(1)
