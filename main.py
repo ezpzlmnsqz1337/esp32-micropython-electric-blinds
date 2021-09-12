@@ -196,11 +196,13 @@ def setIgnoreLimits(msg):
 
 # web server part from here
 
+def _onConnectCallback():
+    timMotor.deinit()
+
 
 def _acceptWebSocketCallback(webSocket, httpClient):
     global ws
     ws = webSocket
-    timMotor.deinit()
     print('WS ACCEPT')
     webSocket.RecvTextCallback = _recvTextCallback
     webSocket.RecvBinaryCallback = _recvBinaryCallback
@@ -268,6 +270,7 @@ def handlerFuncGet(httpClient, httpResponse):
 srv = MicroWebSrv(webPath='www/', port='8082')
 srv.MaxWebSocketRecvLen = 256
 srv.WebSocketThreaded = True
+srv.OnConnectCallback = _onConnectCallback
 srv.AcceptWebSocketCallback = _acceptWebSocketCallback
 srv.Start(threaded=True)
 print('server started')

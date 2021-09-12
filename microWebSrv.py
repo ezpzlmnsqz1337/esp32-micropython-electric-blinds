@@ -180,6 +180,7 @@ class MicroWebSrv:
 
         self.MaxWebSocketRecvLen = 1024
         self.WebSocketThreaded = True
+        self.OnConnectCallback = None
         self.AcceptWebSocketCallback = None
         self.LetCacheStaticContentLevel = 2
 
@@ -310,6 +311,7 @@ class MicroWebSrv:
         # ------------------------------------------------------------------------
 
         def __init__(self, microWebSrv, socket, addr):
+            microWebSrv.OnConnectCallback()
             socket.settimeout(2)
             self._microWebSrv = microWebSrv
             self._socket = socket
