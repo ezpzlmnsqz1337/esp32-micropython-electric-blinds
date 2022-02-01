@@ -4,7 +4,7 @@ import stepper
 import time
 import adafruit
 
-ws = None
+ws = []
 
 # handle password for configuration over web page
 
@@ -44,10 +44,6 @@ def moveMotors():
 motors[0].invertDirection(True)
 
 
-timMotor.init(period=1, mode=machine.Timer.PERIODIC,
-              callback=lambda t: moveMotors())
-
-
 def saveConfig():
     with open('config', 'w') as f:
         for m in motors:
@@ -55,103 +51,119 @@ def saveConfig():
             f.write(str(m.getLimit()) + '\n')
 
 
-def startMotors():
+def stopMotors():
     timMotor.deinit()
+
+
+def startMotors():
     timMotor.init(period=1, mode=machine.Timer.PERIODIC,
                   callback=lambda t: moveMotors())
+
+
+startMotors()
+stopMotors()
 
 # web socket callbacks
 
 
 def sendMotorsPosition():
+    stopMotors()
     global ws
-    for i, m in enumerate(motors):
-        ignore = 1 if m.getIgnoreLimits() == True else 0
-        if ws != None:
-            ws.SendText('blindsPosition:motor:%i:position:%i:target:%i:limit:%i:ignoreLimit:%i' %
-                        (i, m.getPosition(), m.getTargetPosition(), m.getLimit(), ignore))
+    for x in ws:
+        for i, m in enumerate(motors):
+            ignore = 1 if m.getIgnoreLimits() == True else 0
+            x.SendText('blindsPosition:motor:%i:position:%i:target:%i:limit:%i:ignoreLimit:%i' %
+                       (i, m.getPosition(), m.getTargetPosition(), m.getLimit(), ignore))
+    startMotors()
 
 
 def goUp(msg):
+    stopMotors()
     global ws
     index = int(msg.split(':')[1])
     steps = int(msg.split(':')[2])
     motor = motors[index]
     motor.setTargetPosition(motor.getTargetPosition() - steps)
-    if ws != None:
-        ws.SendText('motor:%i:goto:%s ' %
-                    (index, motor.getTargetPosition() - steps))
+    for x in ws:
+        x.SendText('motor:%i:goto:%s ' %
+                   (index, motor.getTargetPosition() - steps))
     saveConfig()
     startMotors()
 
 
 def goDown(msg):
+    stopMotors()
     global ws
     index = int(msg.split(':')[1])
     steps = int(msg.split(':')[2])
     motor = motors[index]
     motor.setTargetPosition(motor.getTargetPosition() + steps)
-    if ws != None:
-        ws.SendText('motor:%i:go to: %i' %
-                    (index, motor.getTargetPosition() + steps))
+    for x in ws:
+        x.SendText('motor:%i:go to: %i' %
+                   (index, motor.getTargetPosition() + steps))
     saveConfig()
     startMotors()
 
 
 def stop(msg):
+    stopMotors()
     global ws
     index = int(msg.split(':')[1])
     motor = motors[index]
     motor.setTargetPosition(motor.getPosition())
     motor.disable()
-    if ws != None:
-        ws.SendText('motor:%i, stop' % index)
+    for x in ws:
+        x.SendText('motor:%i, stop' % index)
     saveConfig()
     startMotors()
 
 
 def closeBlinds():
+    stopMotors()
     global ws
     for m in motors:
         m.setTargetPosition(m.getLimit())
-        if ws != None:
-            ws.SendText('motors, close, limit: %i ' %
-                        (m.getLimit()))
+        for x in ws:
+            x.SendText('motors, close, limit: %i ' %
+                       (m.getLimit()))
     saveConfig()
     startMotors()
 
 
 def openBlinds():
+    stopMotors()
     global ws
     for m in motors:
         m.setTargetPosition(0)
-        if ws != None:
-            ws.SendText('motors: open, bottom limit: %i ' %
-                        (0))
+        for x in ws:
+            x.SendText('motors: open, bottom limit: %i ' %
+                       (0))
     saveConfig()
     startMotors()
 
 
 def closeBlind(msg):
+    stopMotors()
     global ws
     index = int(msg.split(':')[1])
     motor = motors[index]
     motor.setTargetPosition(motor.getLimit())
-    if ws != None:
-        ws.SendText('motor: %i, close, limit: %i ' %
-                    (index, motor.getLimit()))
+    for x in ws:
+        x.SendText('motor: %i, close, limit: %i ' %
+                   (index, motor.getLimit()))
     saveConfig()
     startMotors()
 
 
 def openBlind(msg):
+    stopMotors()
     global ws
     index = int(msg.split(':')[1])
     motor = motors[index]
     motor.setTargetPosition(0)
-    if ws != None:
-        ws.SendText('motor: %i, open, bottom limit: %i ' %
-                    (index, 0))
+    for x in ws:
+        x.SendText('motor: %i, open, bottom limit: %i ' %
+                   (index, 0))
     saveConfig()
     startMotors()
 
@@ -163,9 +175,9 @@ def setTopPosition(msg):
         index = int(msg.split(':')[1])
         motor = motors[index]
         motor.setTopPosition()
-        if ws != None:
-            ws.SendText('setTopPosition:motor:%i:position:%i' %
-                        (index, motor.getPosition()))
+        for x in ws:
+            x.SendText('setTopPosition:motor:%i:position:%i' %
+                       (index, motor.getPosition()))
         saveConfig()
 
 
@@ -176,9 +188,9 @@ def setLimit(msg):
         index = int(msg.split(':')[1])
         motor = motors[index]
         motor.setLimit(motor.getTargetPosition())
-        if ws != None:
-            ws.SendText('setLimit:motor:%i:position:%i' %
-                        (index, motor.getPosition()))
+        for x in ws:
+            x.SendText('setLimit:motor:%i:position:%i' %
+                       (index, motor.getPosition()))
         saveConfig()
 
 
@@ -190,20 +202,21 @@ def setIgnoreLimits(msg):
         for m in motors:
             m.setIgnoreLimits(ignoreLimits)
 
-        if ws != None:
-            ws.SendText('setIgnoreLimits:%i' % ignoreLimits)
+        for x in ws:
+            x.SendText('setIgnoreLimits:%i' % ignoreLimits)
 
 
 # web server part from here
 
 def _onConnectCallback():
-    timMotor.deinit()
+    stopMotors()
 
 
 def _acceptWebSocketCallback(webSocket, httpClient):
+    stopMotors()
     global ws
-    ws = webSocket
-    print('WS ACCEPT')
+    ws.append(webSocket)
+    print(f'WS ACCEPT {len(ws)}')
     webSocket.RecvTextCallback = _recvTextCallback
     webSocket.RecvBinaryCallback = _recvBinaryCallback
     webSocket.ClosedCallback = _closedCallback
@@ -230,6 +243,7 @@ def _recvTextCallback(webSocket, msg):
     elif 'setLimit' in msg:
         setLimit(msg)
     elif 'getBlindsPosition' in msg:
+        timState.deinit()
         timState.init(period=1000, mode=machine.Timer.PERIODIC,
                       callback=lambda t: sendMotorsPosition())
     elif 'setIgnoreLimits' in msg:
@@ -241,8 +255,11 @@ def _recvBinaryCallback(webSocket, data):
 
 
 def _closedCallback(webSocket):
-    print('WS CLOSED')
-    timState.deinit()
+    global ws
+    ws.remove(webSocket)
+    print(f'WS CLOSED {len(ws)}')
+    if len(ws) == 0:
+        timState.deinit()
 
 # ----------------------------------------------------------------------------
 
@@ -281,6 +298,7 @@ print('server started')
 
 
 def adafruitCb(topic, data):
+    stopMotors()
     print('ADA CB ' + str(data))
     for m in motors:
         if data == b'OPEN':
@@ -297,6 +315,7 @@ def checkAda():
     except Exception as e:
         print('Check for feed value failed {}{}\n'.format(
             type(e).__name__, e))
+    finally:
         adafruit.subscribe(adafruitCb)
         # machine.reset()
 
