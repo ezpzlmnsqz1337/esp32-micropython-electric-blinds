@@ -37,7 +37,7 @@ def subscribe(callback):
 
     mqtt_feedname = bytes(ADAFRUIT_USERNAME.decode('utf-8') + '/feeds/' +
                           ADAFRUIT_IO_FEEDNAME.decode('utf-8'), 'utf-8')
-    print(mqtt_feedname)
+    # print(mqtt_feedname)
     client.set_callback(callback)
     try:
         client.subscribe(mqtt_feedname)

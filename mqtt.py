@@ -165,7 +165,7 @@ class MQTTClient:
     # messages processed internally.
     def wait_msg(self):
         res = self.sock.read(1)
-        self.sock.setblocking(True)
+        # self.sock.setblocking(True)
         if res is None:
             return None
         if res == b"":

@@ -2,8 +2,19 @@
 import time
 import network
 import webrepl
+import stepper
 import esp
 esp.osdebug(None)
+
+# disable motors first thing we do
+# motors settings
+motors = (
+    stepper.MyStepper(5, 18, 19, 21, 0),
+    stepper.MyStepper(13, 12, 14, 27, 1)
+)
+
+for m in motors:
+    m.disable()
 
 #from upysh import *
 #import machine

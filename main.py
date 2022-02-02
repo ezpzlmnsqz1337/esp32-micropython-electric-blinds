@@ -27,18 +27,13 @@ with open('config', 'r') as f:
         m.setTargetPosition(m.getPosition())
         m.setLimit(int(f.readline()))
 
-timMotor = machine.Timer(0)
+timAda = machine.Timer(0)
 timState = machine.Timer(1)
 
 
 def moveMotors():
-    ready = 0
     for m in motors:
-        if not m.move():
-            ready += 1
-
-    if ready == 2:
-        timMotor.deinit()
+        m.move()
 
 
 motors[0].invertDirection(True)
@@ -50,35 +45,19 @@ def saveConfig():
             f.write(str(m.getTargetPosition()) + '\n')
             f.write(str(m.getLimit()) + '\n')
 
-
-def stopMotors():
-    timMotor.deinit()
-
-
-def startMotors():
-    timMotor.init(period=1, mode=machine.Timer.PERIODIC,
-                  callback=lambda t: moveMotors())
-
-
-startMotors()
-stopMotors()
-
 # web socket callbacks
 
 
 def sendMotorsPosition():
-    stopMotors()
     global ws
     for x in ws:
         for i, m in enumerate(motors):
             ignore = 1 if m.getIgnoreLimits() == True else 0
             x.SendText('blindsPosition:motor:%i:position:%i:target:%i:limit:%i:ignoreLimit:%i' %
                        (i, m.getPosition(), m.getTargetPosition(), m.getLimit(), ignore))
-    startMotors()
 
 
 def goUp(msg):
-    stopMotors()
     global ws
     index = int(msg.split(':')[1])
     steps = int(msg.split(':')[2])
@@ -88,11 +67,9 @@ def goUp(msg):
         x.SendText('motor:%i:goto:%s ' %
                    (index, motor.getTargetPosition() - steps))
     saveConfig()
-    startMotors()
 
 
 def goDown(msg):
-    stopMotors()
     global ws
     index = int(msg.split(':')[1])
     steps = int(msg.split(':')[2])
@@ -102,11 +79,9 @@ def goDown(msg):
         x.SendText('motor:%i:go to: %i' %
                    (index, motor.getTargetPosition() + steps))
     saveConfig()
-    startMotors()
 
 
 def stop(msg):
-    stopMotors()
     global ws
     index = int(msg.split(':')[1])
     motor = motors[index]
@@ -115,11 +90,9 @@ def stop(msg):
     for x in ws:
         x.SendText('motor:%i, stop' % index)
     saveConfig()
-    startMotors()
 
 
 def closeBlinds():
-    stopMotors()
     global ws
     for m in motors:
         m.setTargetPosition(m.getLimit())
@@ -127,11 +100,9 @@ def closeBlinds():
             x.SendText('motors, close, limit: %i ' %
                        (m.getLimit()))
     saveConfig()
-    startMotors()
 
 
 def openBlinds():
-    stopMotors()
     global ws
     for m in motors:
         m.setTargetPosition(0)
@@ -139,11 +110,9 @@ def openBlinds():
             x.SendText('motors: open, bottom limit: %i ' %
                        (0))
     saveConfig()
-    startMotors()
 
 
 def closeBlind(msg):
-    stopMotors()
     global ws
     index = int(msg.split(':')[1])
     motor = motors[index]
@@ -152,11 +121,9 @@ def closeBlind(msg):
         x.SendText('motor: %i, close, limit: %i ' %
                    (index, motor.getLimit()))
     saveConfig()
-    startMotors()
 
 
 def openBlind(msg):
-    stopMotors()
     global ws
     index = int(msg.split(':')[1])
     motor = motors[index]
@@ -165,7 +132,6 @@ def openBlind(msg):
         x.SendText('motor: %i, open, bottom limit: %i ' %
                    (index, 0))
     saveConfig()
-    startMotors()
 
 
 def setTopPosition(msg):
@@ -209,18 +175,17 @@ def setIgnoreLimits(msg):
 # web server part from here
 
 def _onConnectCallback():
-    stopMotors()
+    print(f'connected')
+    # stopMotors()
 
 
 def _acceptWebSocketCallback(webSocket, httpClient):
-    stopMotors()
     global ws
     ws.append(webSocket)
     print(f'WS ACCEPT {len(ws)}')
     webSocket.RecvTextCallback = _recvTextCallback
     webSocket.RecvBinaryCallback = _recvBinaryCallback
     webSocket.ClosedCallback = _closedCallback
-    startMotors()
 
 
 def _recvTextCallback(webSocket, msg):
@@ -298,7 +263,6 @@ print('server started')
 
 
 def adafruitCb(topic, data):
-    stopMotors()
     print('ADA CB ' + str(data))
     for m in motors:
         if data == b'OPEN':
@@ -306,22 +270,22 @@ def adafruitCb(topic, data):
         elif data == b'CLOSE':
             closeBlinds()
     saveConfig()
-    startMotors()
 
 
 def checkAda():
     try:
         adafruit.check()
     except Exception as e:
-        print('Check for feed value failed {}{}\n'.format(
-            type(e).__name__, e))
-    finally:
         adafruit.subscribe(adafruitCb)
-        # machine.reset()
+        # print('Check for feed value failed {}{}\n'.format(
+        # type(e).__name__, e))
 
 
 adafruit.subscribe(adafruitCb)
+print(f"Timer ada init")
+timAda.init(period=2000, mode=machine.Timer.PERIODIC,
+            callback=lambda t: checkAda())
 
 while True:
-    checkAda()
-    time.sleep(1)
+    moveMotors()
+    time.sleep(0.001)
